@@ -17,7 +17,8 @@ move = Twist()
 
 bridge = CvBridge()
 
-goal_position = 1100
+goal_position = 935
+goal_position_far = 917
 last_position = 1000
 call_one = True
 last_error = -1
@@ -30,7 +31,30 @@ def return_position(thresh):
     x_count = 0
     hit_white = False
 
-    for i in range(670,700):
+    for i in range(550,580):
+        for j in reversed(range(600, 1279)):
+            #print("row:", i, "column:",j, "value:", thresh[i][j])
+            if(not hit_white and thresh[i][j] > 127):
+                hit_white = True
+            if(hit_white and thresh[i][j] < 127):
+                x_sum += j
+                x_count += 1
+                hit_white = False
+
+    if x_count > 15:
+        global last_position
+        last_position = (float(x_sum)/x_count)
+        return last_position
+    else:
+        return last_position
+
+def return_position_far(thresh):
+    global last_position
+    x_sum = 0
+    x_count = 0
+    hit_white = False
+
+    for i in range(400,430):
         for j in reversed(range(600, 1279)):
             #print("row:", i, "column:",j, "value:", thresh[i][j])
             if(not hit_white and thresh[i][j] > 127):
@@ -68,36 +92,40 @@ def imageCallback(data):
 
         # # print(thresh.shape)
         # cv2.imshow("frame",opening)
-        cv2.waitKey(10)
+        #cv2.waitKey(10)
 
         s_error = goal_position - return_position(opening)
+        print(s_error)
 
-        #print(s_error)
 
-        if call_one:
-            for i in range(1,3):
-                move.linear.x = 0.13
-                move.angular.z = 0.51
-                pub.publish(move)
-                time.sleep(1)
-            call_one = False
+        # if call_one:
+        #     for i in range(1,5):
+        #         move.linear.x = 0.13
+        #         move.angular.z = 0.51
+        #         pub.publish(move)
+        #         time.sleep(1)
+        #     call_one = False
 
-        if(abs(s_error) > 200):
+        if(s_error > 200):
             move.linear.x = 0.0
-            move.angular.z = 0.8 * np.sign(s_error)
+            move.angular.z = 1 * np.sign(s_error)
+            time.sleep(0.7)
+            
+
         # elif(abs(s_error) > 60):
         #     move.linear.x = 0.01
         #     move.angular.z = 0.12 * np.sign(s_error)
         # else:
         #     move.linear.x = 0.15
         #     move.angular.z = 0
-        elif(abs(s_error) > 30):
+        elif(abs(s_error) > 50):
             move.linear.x = 0.01
             move.angular.z = 0.12 * np.sign(s_error)
             last_error = np.sign(s_error)
         else:
-            move.linear.x = 0.13
-            move.angular.z = -last_error * 0.05
+            move.linear.x = 0.15
+            move.angular.z = -last_error * 0.04
+
 
         pub.publish(move)
     except CvBridgeError, e:
