@@ -54,6 +54,7 @@ def imageCallback(data):
     global last_position
     global goal_position
     global last_error
+    global call_one
 
     try:
         kernel = np.ones((10,10),np.uint)
@@ -73,12 +74,13 @@ def imageCallback(data):
 
         #print(s_error)
 
-        # if call_one:
-        #     for i in range(1,30000):
-        #         move.linear.x = 0.13
-        #         move.angular.z = 0.51
-        #         pub.publish(move)
-        #     call_one = False
+        if call_one:
+            for i in range(1,3):
+                move.linear.x = 0.13
+                move.angular.z = 0.51
+                pub.publish(move)
+                time.sleep(1)
+            call_one = False
 
         if(abs(s_error) > 200):
             move.linear.x = 0.0
