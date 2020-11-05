@@ -17,9 +17,8 @@ move = Twist()
 
 bridge = CvBridge()
 
-goal_position = 935
-goal_position_far = 917
-last_position = 1000
+goal_position = 915
+last_position = 915
 call_one = True
 last_error = -1
 
@@ -32,7 +31,7 @@ def return_position(thresh):
     hit_white = False
 
     for i in range(550,580):
-        for j in reversed(range(600, 1279)):
+        for j in reversed(range(600, 1275)):
             #print("row:", i, "column:",j, "value:", thresh[i][j])
             if(not hit_white and thresh[i][j] > 127):
                 hit_white = True
@@ -41,30 +40,7 @@ def return_position(thresh):
                 x_count += 1
                 hit_white = False
 
-    if x_count > 15:
-        global last_position
-        last_position = (float(x_sum)/x_count)
-        return last_position
-    else:
-        return last_position
-
-def return_position_far(thresh):
-    global last_position
-    x_sum = 0
-    x_count = 0
-    hit_white = False
-
-    for i in range(400,430):
-        for j in reversed(range(600, 1279)):
-            #print("row:", i, "column:",j, "value:", thresh[i][j])
-            if(not hit_white and thresh[i][j] > 127):
-                hit_white = True
-            if(hit_white and thresh[i][j] < 127):
-                x_sum += j
-                x_count += 1
-                hit_white = False
-
-    if x_count > 15:
+    if x_count > 28:
         global last_position
         last_position = (float(x_sum)/x_count)
         return last_position
@@ -92,7 +68,7 @@ def imageCallback(data):
 
         # # print(thresh.shape)
         # cv2.imshow("frame",opening)
-        #cv2.waitKey(10)
+        # cv2.waitKey(10)
 
         s_error = goal_position - return_position(opening)
         print(s_error)
@@ -101,16 +77,14 @@ def imageCallback(data):
         # if call_one:
         #     for i in range(1,5):
         #         move.linear.x = 0.13
-        #         move.angular.z = 0.51
+        #         move.angular.z = 0.5
         #         pub.publish(move)
-        #         time.sleep(1)
+        #         time.sleep(0.9)
         #     call_one = False
 
-        if(s_error > 200):
-            move.linear.x = 0.0
-            move.angular.z = 1 * np.sign(s_error)
-            time.sleep(0.7)
-            
+        # if(s_error > 200):
+        #     move.linear.x = 0.0
+        #     move.angular.z = 0.3 * np.sign(s_error)
 
         # elif(abs(s_error) > 60):
         #     move.linear.x = 0.01
@@ -118,12 +92,12 @@ def imageCallback(data):
         # else:
         #     move.linear.x = 0.15
         #     move.angular.z = 0
-        elif(abs(s_error) > 50):
-            move.linear.x = 0.01
-            move.angular.z = 0.12 * np.sign(s_error)
+        if(abs(s_error) > 50):
+            move.linear.x = 0.0
+            move.angular.z = 0.2 * np.sign(s_error)
             last_error = np.sign(s_error)
         else:
-            move.linear.x = 0.15
+            move.linear.x = 0.1
             move.angular.z = -last_error * 0.04
 
 
