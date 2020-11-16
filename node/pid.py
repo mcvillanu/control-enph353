@@ -5,14 +5,11 @@ import cv2
 import numpy as np
 import time
 
+from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 
-rospy.init_node('topic_publisher')
-pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
-
-rate = rospy.Rate(1000)
 move = Twist()
 
 bridge = CvBridge()
@@ -101,11 +98,17 @@ def imageCallback(data):
             move.angular.z = -last_error * 0.04
 
 
-        pub.publish(move)
+        vel_pub.publish(move)
     except CvBridgeError, e:
         print(e)
 
-while not rospy.is_shutdown():
+if __name__== "__main__":
     image_topic = "R1/pi_camera/image_raw"
+    rospy.init_node('controller')
     sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
+    vel_pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
+    score_pub = rospy.Publisher('license_plate', String, queue_size=1)
+    rospy.sleep(2)
+    score_pub.publish("funMode,passwd,0,XR58")
+    rospy.Rate(5)
     rospy.spin()
