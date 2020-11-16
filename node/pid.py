@@ -6,6 +6,7 @@ import numpy as np
 import time
 
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -74,13 +75,13 @@ def imageCallback(data):
         print(s_error)
 
 
-        # if call_one:
-        #     for i in range(1,5):
-        #         move.linear.x = 0.13
-        #         move.angular.z = 0.5
-        #         pub.publish(move)
-        #         time.sleep(0.9)
-        #     call_one = False
+        if call_one:
+            for i in range(1,5):
+                move.linear.x = 0.15
+                move.angular.z = 0.5
+                pub.publish(move)
+                time.sleep(0.9)
+            call_one = False
 
         # if(s_error > 200):
         #     move.linear.x = 0.0
@@ -100,12 +101,14 @@ def imageCallback(data):
             move.linear.x = 0.1
             move.angular.z = -last_error * 0.04
 
-
         pub.publish(move)
     except CvBridgeError, e:
         print(e)
 
-while not rospy.is_shutdown():
-    image_topic = "R1/pi_camera/image_raw"
-    sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
-    rospy.spin()
+if __name__ == '__main__':
+    score = rospy.Publisher('/license_plate', String, queue_size=10)
+    score.publish(str('TeamRed,multi21,0,XR58'))
+    while not rospy.is_shutdown():
+        image_topic = "R1/pi_camera/image_raw"
+        sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
+        rospy.spin()
