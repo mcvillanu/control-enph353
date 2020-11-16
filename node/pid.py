@@ -10,10 +10,7 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 
-rospy.init_node('topic_publisher')
-pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
 
-rate = rospy.Rate(1000)
 move = Twist()
 
 bridge = CvBridge()
@@ -106,9 +103,12 @@ def imageCallback(data):
         print(e)
 
 if __name__ == '__main__':
-    score = rospy.Publisher('/license_plate', String, queue_size=10)
-    score.publish(str('TeamRed,multi21,0,XR58'))
-    while not rospy.is_shutdown():
-        image_topic = "R1/pi_camera/image_raw"
-        sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
-        rospy.spin()
+    image_topic = "R1/pi_camera/image_raw"
+    rospy.init_node('controller')
+    sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
+    pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
+    score_pub = rospy.Publisher('license_plate', String, queue_size=1)
+    rospy.sleep(2)
+    score_pub.publish("funMode,passwd,0,XR58")
+    rospy.Rate(5)
+    rospy.spin()
