@@ -20,6 +20,8 @@ last_position = 915
 call_one = True
 last_error = -1
 
+timer_stopped = False
+
 # size of the pictures is 720r x 1280c
 
 def return_position(thresh):
@@ -53,6 +55,7 @@ def imageCallback(data):
     global goal_position
     global last_error
     global call_one
+    global timer_stopped
 
     try:
         kernel = np.ones((10,10),np.uint)
@@ -99,6 +102,9 @@ def imageCallback(data):
             move.angular.z = -last_error * 0.04
 
         pub.publish(move)
+        if time.time() - start_time > 40 and not timer_stopped:
+            score_pub.publish('funMode,passwd,-1,XR58')
+            timer_stopped = True
     except CvBridgeError, e:
         print(e)
 
@@ -108,6 +114,7 @@ if __name__ == '__main__':
     sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
     pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
     score_pub = rospy.Publisher('license_plate', String, queue_size=1)
+    start_time = time.time()
     rospy.sleep(2)
     score_pub.publish("funMode,passwd,0,XR58")
     rospy.Rate(5)
