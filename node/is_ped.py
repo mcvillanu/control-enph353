@@ -24,6 +24,7 @@ back_sub_bool = False
 rows_to_check = [(370,380),(390,400),(410,420),(440,450)]
 cw_pivot = False
 no_per_count = 0
+found_six_bool = False
 
 backsub_count = 0
 
@@ -87,6 +88,7 @@ def imageCallback(data):
     global last_error
     global call_one
     global no_per_count
+    # global found_six_bool
 
     try:
         kernel = np.ones((10,10),np.uint)
@@ -95,7 +97,7 @@ def imageCallback(data):
         ret, thresh = cv2.threshold(gray_frame,220,255, cv2.THRESH_BINARY)
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
 
-        cv2.imshow("ddd",thresh)
+        cv2.imshow("ddd",rgb_image)
         cv2.waitKey(1)
 
         # if cw_pivot:
@@ -154,7 +156,35 @@ def imageCallback(data):
             else:
                 crosswalk_count +=1
                 print("cw count", crosswalk_count)
-                return
+        #         return
+
+        # if found_six_bool:
+        #     move.linear.x = 0.3
+        #     pub.publish(move)
+        #     time.sleep(1.8)
+
+        #     move.linear.x = 0.0
+        #     move.angular.z = 0.0
+        #     pub.publish(move)
+        #     time.sleep(0.2)
+
+        #     move.linear.x = 0.3
+        #     pub.publish(move)
+        #     time.sleep(1.8)
+
+        #     move.linear.x = 0.0
+        #     move.angular.z = 0.0
+        #     pub.publish(move)
+        #     time.sleep(0.2)
+
+        #     for i in range(1,5):
+        #         move.linear.x = 0.15
+        #         move.angular.z = 0.5
+        #         pub.publish(move)
+        #         time.sleep(0.9)
+        #     call_one = False
+
+
 
 
     # find the colors within the specified boundaries and apply
@@ -179,13 +209,13 @@ def imageCallback(data):
         print(s_error)
 
 
-        # if call_one:
-        #     for i in range(1,5):
-        #         move.linear.x = 0.15
-        #         move.angular.z = 0.5
-        #         pub.publish(move)
-        #         time.sleep(0.9)
-        #     call_one = False
+        if call_one:
+            for i in range(1,5):
+                move.linear.x = 0.15
+                move.angular.z = 0.5
+                pub.publish(move)
+                time.sleep(0.9)
+            call_one = False
 
 
         
@@ -198,6 +228,13 @@ def imageCallback(data):
         # cv2.waitKey(1)
 
         if at_cross_bool:
+            # if found_six:
+            #     found_six_bool = True
+            #     move.linear.x = 0.0
+            #     move.angular.z = 0.0
+            #     pub.publish(move)
+            #     time.sleep(0.2)
+            #     return
             # if abs(s_error) > 20:
             #     cw_pivot = True
             #     return
