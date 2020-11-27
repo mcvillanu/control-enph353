@@ -171,7 +171,7 @@ def imageCallback(data):
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
 
-            if no_per_count == 5:
+            if no_per_count == 7:
                 move.linear.x = 0.3
                 pub.publish(move)
                 time.sleep(1.8)
@@ -179,7 +179,7 @@ def imageCallback(data):
                 move.linear.x = 0.0
                 move.angular.z = 0.0
                 pub.publish(move)
-                time.sleep(0.2)
+                time.sleep(0.5)
 
                 back_sub_bool = False
                 backsub_count = 0
@@ -197,7 +197,7 @@ def imageCallback(data):
             return
 
         if crosswalk_count > 0:
-            if crosswalk_count == 7:
+            if crosswalk_count == 10:
                 crosswalk_count = 0
             else:
                 crosswalk_count +=1
@@ -311,7 +311,7 @@ def imageCallback(data):
                 s_error = goal_position - return_position(opening)
                 print("right follow ", s_error)
         
-        if(abs(s_error) > 200):
+        if(abs(s_error) > 220):
             move.linear.x = 0.0
             move.angular.z = 0.75
         elif(abs(s_error) > 50):
