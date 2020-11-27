@@ -28,8 +28,19 @@ kernel = np.ones((10,10),np.uint)
 lower = np.array([230,0,0], dtype = "uint8")
 upper = np.array([255,50,50], dtype = "uint8")
 
-lower_line_fol = np.array([0,0,100], dtype = "uint8")
-upper_line_fol = np.array([50,50,150], dtype = "uint8")
+lower_line_fol_out = np.array([0,0,100], dtype = "uint8")
+upper_line_fol_out = np.array([125,125,225], dtype = "uint8")
+
+a = np.array([90,90,190], dtype = "uint8")
+b = np.array([110,110,210], dtype = "uint8") 
+
+lower_line_fol_in = np.array([0,0,80], dtype = "uint8")
+upper_line_fol_in = np.array([10,10,115], dtype = "uint8")
+
+low_boundary_north_cars = np.array([85,85,185], dtype = "uint8")
+high_boundary_north_cars = np.array([115,115,215], dtype = "uint8") 
+low_boundary_south_cars = np.array([0,0,75], dtype = "uint8")
+high_boundary_south_cars = np.array([15,15,120], dtype = "uint8")
 
 crosswalk_count = 0
 no_per_count = 0
@@ -39,7 +50,7 @@ backSub = cv2.createBackgroundSubtractorMOG2()
 back_sub_bool = False
 backsub_count = 0
 
-found_six_bool = False
+found_six_bool = True
 
 no_car_count = 0
 waiting_to_go = False
@@ -47,7 +58,7 @@ backSub_turn = cv2.createBackgroundSubtractorMOG2()
 back_sub_bool_turn = False
 backsub_count_turn = 0
 
-in_middle = False
+in_middle = True
 
 # size of the pictures is 720r x 1280c
 
@@ -59,7 +70,7 @@ def return_position_L(thresh):
     hit_white_L = False
 
     for i in range(550,580): #550,580
-        for j in range(200, 600):
+        for j in range(150, 600):
             if(not hit_white_L and thresh[i][j] > 127):
                 hit_white_L = True
 
@@ -143,12 +154,19 @@ def imageCallback(data):
     global call_one
     global no_per_count
     global found_six_bool
-    global lower_line_fol
-    global upper_line_fol
+    global lower_line_fol_out
+    global upper_line_fol_out
+    global lower_line_fol_in
+    global upper_line_fol_in
     global kernel
 
     global waiting_to_go
     global in_middle
+
+    global low_boundary_north_cars
+    global high_boundary_north_cars
+    global low_boundary_south_cars
+    global high_boundary_south_cars
 
     global backSub_turn
     global back_sub_bool
@@ -159,9 +177,11 @@ def imageCallback(data):
         rgb_image = bridge.imgmsg_to_cv2(data)
         gray_frame = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(gray_frame,220,255, cv2.THRESH_BINARY)
-        
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-        # cv2.imshow("ddd",no_noise_fgMask_turn[400:440,250:700])
+
+        # line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
+        # opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
+        # cv2.imshow("ddd",opening_line_fol)
         # cv2.waitKey(1)
         # return
        
@@ -251,10 +271,10 @@ def imageCallback(data):
 
             if no_car_count == 10:
                 print("no car count", no_car_count)
-                move.linear.x = 0.13
-                move.angular.z = 0.5
+                move.linear.x = 0.14
+                move.angular.z = 0.6
                 pub.publish(move)
-                time.sleep(3.7)
+                time.sleep(3)
 
                 move.linear.x = 0.0
                 move.angular.z = 0.0
@@ -265,9 +285,7 @@ def imageCallback(data):
                 backsub_count_turn = 5
                 no_car_count = 0
                 crosswalk_count += 1
-
-            
-
+                last_error = -1
             return
 
         if found_six_bool:
@@ -281,20 +299,20 @@ def imageCallback(data):
 
                 found_six_bool = False
                 waiting_to_go = True
-
                 return
 
-            line_fol_mask = cv2.inRange(rgb_image, lower_line_fol, upper_line_fol)
+            line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
             opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
+            
 
             s_error = goal_position_L - return_position_L(opening + opening_line_fol)
 
-            if(abs(s_error) > 200):
+            if(abs(s_error) > 220):
                 move.linear.x = 0.02
-                move.angular.z = 0.3
-            elif(abs(s_error) > 50):
+                move.angular.z = 0.75 * np.sign(s_error)
+            elif(abs(s_error) > 120):
                 move.linear.x = 0.02
-                move.angular.z = 0.15 * np.sign(s_error)
+                move.angular.z = 0.4 * np.sign(s_error)
                 last_error = np.sign(s_error)
             else:
                 move.linear.x = 0.1
@@ -304,28 +322,49 @@ def imageCallback(data):
             # print("left follow ", s_error)
         else:
             if in_middle:
-                line_fol_mask = cv2.inRange(rgb_image, lower_line_fol, upper_line_fol)
+                line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
                 opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
-                s_error = goal_position - return_position(opening + opening_line_fol)
+
+                s_error = goal_position - return_position(opening+opening_line_fol)
+
+                if(abs(s_error) > 220):
+                    move.linear.x = 0.0
+                    move.angular.z = 0.3 * np.sign(s_error)
+                elif(abs(s_error) > 100):
+                    move.linear.x = 0.0
+                    move.angular.z = 0.4 * np.sign(s_error)
+                    last_error = np.sign(s_error)
+                elif(abs(s_error) > 70):
+                    move.linear.x = 0.0
+                    move.angular.z = 0.1 * np.sign(s_error)
+                    last_error = np.sign(s_error)
+                else:
+                    move.linear.x = 0.07
+                    move.angular.z = -last_error * 0.04
+                pub.publish(move) 
+
+                cv2.imshow("d", opening+opening_line_fol)
+                cv2.waitKey(1)
+                print("mid right follow ", s_error)
             else:
                 s_error = goal_position - return_position(opening)
                 print("right follow ", s_error)
         
-        if(abs(s_error) > 220):
-            move.linear.x = 0.0
-            move.angular.z = 0.75
-        elif(abs(s_error) > 50):
-            move.linear.x = 0.0
-            move.angular.z = 0.2 * np.sign(s_error)
-            last_error = np.sign(s_error)
-        elif(abs(s_error) > 20):
-            move.linear.x = 0.0
-            move.angular.z = 0.05 * np.sign(s_error)
-            last_error = np.sign(s_error)
-        else:
-            move.linear.x = 0.13
-            move.angular.z = -last_error * 0.015
-        pub.publish(move)    
+                if(abs(s_error) > 220):
+                    move.linear.x = 0.0
+                    move.angular.z = 0.75
+                elif(abs(s_error) > 50):
+                    move.linear.x = 0.0
+                    move.angular.z = 0.2 * np.sign(s_error)
+                    last_error = np.sign(s_error)
+                elif(abs(s_error) > 20):
+                    move.linear.x = 0.0
+                    move.angular.z = 0.05 * np.sign(s_error)
+                    last_error = np.sign(s_error)
+                else:
+                    move.linear.x = 0.13
+                    move.angular.z = -last_error * 0.015
+                    pub.publish(move)    
         
     except CvBridgeError, e:
         print(e)
