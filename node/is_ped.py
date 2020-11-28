@@ -31,7 +31,6 @@ last_position_L = 370 # stores last position for left side following
 
 last_error = -1 # direction of last error, for straight driving correction
 
-
 # image processing parameters 
 kernel = np.ones((10,10),np.uint) # 10x10 kernel to remove noise from images
 
@@ -42,6 +41,8 @@ low_boundary_north_cars = np.array([85,85,185], dtype = "uint8") # lower boundar
 high_boundary_north_cars = np.array([115,115,215], dtype = "uint8") # upper boundary for parked cars on the north side
 low_boundary_south_cars = np.array([0,0,75], dtype = "uint8") # lower boundary for parked cars on the south side
 high_boundary_south_cars = np.array([15,15,120], dtype = "uint8") # upper boundary for parked cars on the south side
+low_boundary_ew_cars = np.array([10,10,110], dtype = "uint8")
+high_boundary_ew_cars = np.array([30,30,130], dtype = "uint8")
 
 # iteration variables
 crosswalk_count = 0 # discards frames after hardcoded movements
@@ -53,9 +54,9 @@ backsub_count_turn = 0 # training the vehicle background subtractor for x iterat
 # states
 back_sub_bool = False # subtracting the background at a crosswalk
 back_sub_bool_turn = False # subtracting the background at the entrance to the middle
-found_six_bool = True # found the outer six plates, ready to go to the middle
-call_one = False # first iteration of the code, hard coded left turn
-in_middle = True # in the middle loop, using right following
+found_six_bool = False # found the outer six plates, ready to go to the middle
+call_one = True # first iteration of the code, hard coded left turn
+in_middle = False # in the middle loop, using right following
 waiting_to_go = False # at the entrance to the middle, ready for background subtraction
 
 # function to return position of white line to the right of the view
@@ -161,6 +162,8 @@ def imageCallback(data):
     global high_boundary_north_cars
     global low_boundary_south_cars
     global high_boundary_south_cars
+    global low_boundary_ew_cars
+    global high_boundary_ew_cars
 
     # iteration parameters
     global crosswalk_count
@@ -185,9 +188,7 @@ def imageCallback(data):
         mask_crosswalk = cv2.inRange(rgb_image, lower_crosswalk , upper_crosswalk )
 
         # uncomment this section to display vehicle view and manually control the car
-        # line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
-        # opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
-        # cv2.imshow("ddd",opening_line_fol)
+        # cv2.imshow("ddd",rgb_image)
         # cv2.waitKey(1)
         # return
 
@@ -204,7 +205,7 @@ def imageCallback(data):
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
 
-            if no_per_count == 7:
+            if no_per_count == 10:
                 move.linear.x = 0.3
                 pub.publish(move)
                 time.sleep(1.8)
@@ -254,9 +255,9 @@ def imageCallback(data):
         if call_one:
             for i in range(1,5):
                 move.linear.x = 0.15
-                move.angular.z = 0.5
+                move.angular.z = 0.58
                 pub.publish(move)
-                time.sleep(0.9)
+                time.sleep(1)
             call_one = False
 
         """
@@ -339,7 +340,7 @@ def imageCallback(data):
                 waiting_to_go = True
                 return
 
-            line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
+            line_fol_mask = cv2.inRange(rgb_image, low_boundary_ew_cars, high_boundary_ew_cars)
             opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
 
             s_error = goal_position_L - return_position_L(opening + opening_line_fol)
@@ -348,27 +349,27 @@ def imageCallback(data):
                 move.linear.x = 0.02
                 move.angular.z = 0.75 * np.sign(s_error)
             elif(abs(s_error) > 120):
-                move.linear.x = 0.02
-                move.angular.z = 0.4 * np.sign(s_error)
+                move.linear.x = 0.03
+                move.angular.z = 0.45 * np.sign(s_error)
                 last_error = np.sign(s_error)
             else:
-                move.linear.x = 0.1
+                move.linear.x = 0.12
                 move.angular.z = -last_error * 0.04
-            pub.publish(move)   
+            pub.publish(move)
+        
 
-        """
-        Right Follow Driving
+        
+        # Right Follow Driving
 
-        This is the most general state. We will be right side following for the outer and inner loops.
-        """
+        # This is the most general state. We will be right side following for the outer and inner loops.
+        
         else:
-            """
-            Middle Right Follow Driving
+            # Middle Right Follow Driving
 
-            In the middle, we follow lines described by the sum of the lines and the edges of parked cars.
-            We also will have different parameters from normal right driving since the boundaries of the parked
-            cars are quite deep relative to the lines.
-            """
+            # In the middle, we follow lines described by the sum of the lines and the edges of parked cars.
+            # We also will have different parameters from normal right driving since the boundaries of the parked
+            # cars are quite deep relative to the lines.
+
             if in_middle:
                 line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
                 opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
@@ -377,48 +378,67 @@ def imageCallback(data):
 
                 if(abs(s_error) > 220):
                     move.linear.x = 0.0
-                    move.angular.z = 0.3 * np.sign(s_error)
+                    move.angular.z = 0.6 * np.sign(s_error)
+                elif(abs(s_error) > 150):
+                    move.linear.x = 0.0
+                    move.angular.z = 0.5 * np.sign(s_error)
+                    last_error = np.sign(s_error)
                 elif(abs(s_error) > 100):
                     move.linear.x = 0.0
-                    move.angular.z = 0.4 * np.sign(s_error)
+                    move.angular.z = 0.3 * np.sign(s_error)
                     last_error = np.sign(s_error)
                 elif(abs(s_error) > 70):
                     move.linear.x = 0.0
-                    move.angular.z = 0.1 * np.sign(s_error)
+                    move.angular.z = 0.15 * np.sign(s_error)
                     last_error = np.sign(s_error)
                 else:
-                    move.linear.x = 0.1
+                    move.linear.x = 0.12
                     move.angular.z = -last_error * 0.04
                 pub.publish(move) 
 
-                cv2.imshow("d", opening+opening_line_fol)
-                cv2.waitKey(1)
-                print("mid right follow ", s_error)
+            
+            # General Right Follow Driving
 
-            """
-            General Right Follow Driving
-
-            This is the most general state we will be in especially for the outer loop.
-            """
+            # This is the general driving state for the outer loop.
             else:
                 s_error = goal_position - return_position(opening)
                 print("right follow ", s_error)
-        
+
+                # if(abs(s_error) > 220):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.5
+
+                # elif(abs(s_error) > 120):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.25 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # elif(abs(s_error) > 50):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.15 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # elif(abs(s_error) > 20):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.05 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # else:
+                #     move.linear.x = 0.15
+                #     move.angular.z = -last_error * 0.01
+                # pub.publish(move)    
                 if(abs(s_error) > 220):
                     move.linear.x = 0.0
-                    move.angular.z = 0.75
+                    move.angular.z = 0.4
                 elif(abs(s_error) > 50):
                     move.linear.x = 0.0
-                    move.angular.z = 0.2 * np.sign(s_error)
+                    move.angular.z = 0.19 * np.sign(s_error)
                     last_error = np.sign(s_error)
                 elif(abs(s_error) > 20):
                     move.linear.x = 0.0
                     move.angular.z = 0.05 * np.sign(s_error)
                     last_error = np.sign(s_error)
                 else:
-                    move.linear.x = 0.13
+                    move.linear.x = 0.15
                     move.angular.z = -last_error * 0.015
-                    pub.publish(move)    
+                pub.publish(move)  
         
     except CvBridgeError, e:
         print(e)
@@ -434,6 +454,6 @@ if __name__ == '__main__':
 
     rospy.sleep(2)
     score_pub.publish("funMode,passwd,0,XR58")
-    
+
     rospy.Rate(5)
     rospy.spin()
