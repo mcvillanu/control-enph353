@@ -2,7 +2,6 @@
 import rospy
 import cv2
 import numpy as np
-import time
 
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
@@ -30,11 +29,13 @@ goal_position_L = 370 # goal position for left side following
 last_position_L = 370 # stores last position for left side following
 
 last_error_array = [0,0,0]
+no_line_count = 0
 
 last_error = -1 # direction of last error, for straight driving correction
 
 # image processing parameters 
 kernel = np.ones((10,10),np.uint) # 10x10 kernel to remove noise from images
+small_kernel = np.ones((5,5),np.uint)
 
 lower_crosswalk = np.array([230,0,0], dtype = "uint8") # lower boundary for crosswalk detection
 upper_crosswalk  = np.array([255,50,50], dtype = "uint8") # upper boundary for crosswalk detection
@@ -56,12 +57,12 @@ backsub_count_turn = 0 # training the vehicle background subtractor for x iterat
 # states
 back_sub_bool = False # subtracting the background at a crosswalk
 back_sub_bool_turn = False # subtracting the background at the entrance to the middle
-found_six_bool = False # found the outer six plates, ready to go to the middle
-call_one = True # first iteration of the code, hard coded left turn
+found_six_bool = True # found the outer six plates, ready to go to the middle
+call_one = False # first iteration of the code, hard coded left turn
 in_middle = False # in the middle loop, using right following
 waiting_to_go = False # at the entrance to the middle, ready for background subtraction
 
-# function to return position of white line to the right of the view
+# function to return position of white line to the left of the view
 def return_position_L(thresh):
     global last_position_L
 
@@ -85,9 +86,10 @@ def return_position_L(thresh):
 
     return last_position_L
 
-# function to return position of white line to the left of the view
+# function to return position of white line to the right of the view
 def return_position(thresh):
     global last_position
+
     x_sum = 0
     x_count = 0
     hit_white = False
@@ -107,6 +109,9 @@ def return_position(thresh):
         return last_position
     else:
         return last_position
+
+
+
 
 # checking the frame if there is a crosswalk immediately in front of the vehicle
 def at_crosswalk(mask):
@@ -132,7 +137,7 @@ def is_car(frame):
     print(frame.shape)
     for x in range(0, frame.shape[0]):
         for y in range(0,frame.shape[1]):
-            if not frame[x][y] == 0:
+            if frame[x][y] != 0:
                 return True
     return False
 
@@ -207,10 +212,13 @@ def imageCallback(data):
         mask_crosswalk = cv2.inRange(rgb_image, lower_crosswalk , upper_crosswalk )
 
         # uncomment this section to display vehicle view and manually control the car
-        # fgMask = backSub.apply(rgb_image)
-        # no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
-        # cv2.imshow("ddd",no_noise_fgMask)
+        # is_car(no_noise_fgMask_turn[320:490,650:1050]) and is_car(no_noise_fgMask_turn[400:440,250:700])
+        # fgMask_turn = backSub_turn.apply(rgb_image)
+        # no_noise_fgMask_turn = cv2.morphologyEx(fgMask_turn, cv2.MORPH_OPEN, small_kernel)
+
+        # cv2.imshow("ddd",no_noise_fgMask_turn[330:450,500:900])
         # cv2.waitKey(1)
+        # print(is_car(no_noise_fgMask_turn[330:450,500:900]))
         # return
 
         """
@@ -229,12 +237,12 @@ def imageCallback(data):
             if no_per_count == 5:
                 move.linear.x = 0.3
                 pub.publish(move)
-                time.sleep(2)
+                rospy.sleep(2)
 
                 move.linear.x = 0.0
                 move.angular.z = 0.0
                 pub.publish(move)
-                time.sleep(0.5)
+                rospy.sleep(0.5)
 
                 back_sub_bool = False
                 backsub_count = 0
@@ -278,7 +286,7 @@ def imageCallback(data):
                 move.linear.x = 0.17
                 move.angular.z = 0.55
                 pub.publish(move)
-                time.sleep(1)
+                rospy.sleep(1)
             call_one = False
 
         """
@@ -291,7 +299,7 @@ def imageCallback(data):
             move.linear.x = 0.0
             move.angular.z = 0.0
             pub.publish(move)
-            time.sleep(0.2)
+            rospy.sleep(0.2)
             back_sub_bool = True
 
             print("at red line")
@@ -308,26 +316,36 @@ def imageCallback(data):
         """
         if waiting_to_go:
             fgMask_turn = backSub_turn.apply(rgb_image)
-            no_noise_fgMask_turn = cv2.morphologyEx(fgMask_turn, cv2.MORPH_OPEN, kernel)
+            no_noise_fgMask_turn = cv2.morphologyEx(fgMask_turn, cv2.MORPH_OPEN, small_kernel)
 
             if(backsub_count_turn < 6):
                 print("train")
                 backsub_count_turn += 1
                 return
 
-            if is_car(no_noise_fgMask_turn[320:490,650:1050]) and is_car(no_noise_fgMask_turn[400:440,250:700]):
+            if is_car(no_noise_fgMask_turn[330:450,500:900]):
                 print("there is car", no_car_count)
                 no_car_count = 0
             else:
                 print("no_car", no_car_count)
                 no_car_count += 1
 
-            if no_car_count == 10:
+            if no_car_count == 6:
                 print("no car count", no_car_count)
-                move.linear.x = 0.14
-                move.angular.z = 0.6
+                move.linear.x = 0.0
+                move.angular.z = 0.8
                 pub.publish(move)
-                time.sleep(3)
+                rospy.sleep(0.5)
+
+                move.linear.x = 0.18
+                move.angular.z = 0
+                
+                pub.publish(move)
+                rospy.sleep(1.3)
+                move.linear.x = 0.0
+                move.angular.z = 0.8
+                pub.publish(move)
+                rospy.sleep(2)
 
                 move.linear.x = 0.0
                 move.angular.z = 0.0
@@ -356,6 +374,14 @@ def imageCallback(data):
                 move.linear.x = 0.0
                 move.angular.z = 0.0
                 pub.publish(move)
+                move.linear.x = 0.0
+                move.angular.z = -0.8
+                
+                pub.publish(move)
+                rospy.sleep(0.5)
+                move.linear.x = 0.0
+                move.angular.z = 0.0
+                pub.publish(move)
 
                 found_six_bool = False
                 waiting_to_go = True
@@ -367,11 +393,11 @@ def imageCallback(data):
             s_error = goal_position_L - return_position_L(opening + opening_line_fol)
 
             if(abs(s_error) > 220):
-                move.linear.x = 0.02
+                move.linear.x = 0.0
                 move.angular.z = 0.75 * np.sign(s_error)
-            elif(abs(s_error) > 120):
-                move.linear.x = 0.03
-                move.angular.z = 0.45 * np.sign(s_error)
+            elif(abs(s_error) > 100):
+                move.linear.x = 0.0
+                move.angular.z = 0.25 * np.sign(s_error)
                 last_error = np.sign(s_error)
             else:
                 move.linear.x = 0.12
@@ -395,29 +421,71 @@ def imageCallback(data):
                 line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
                 opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
 
-                s_error = goal_position - return_position(opening+opening_line_fol)
+                shifted = opening_line_fol[:,125:]
+                result = np.zeros((opening.shape[0],opening.shape[1]))
+                result[:,0:shifted.shape[1]] = shifted
+
+                s_error = -20+goal_position - return_position(opening+result)
+
+                # position = return_position_mid(opening)
+                # s_error = 10+ goal_position - position
+
+                # if position == -1:
+                #     move.linear.x = 0.12
+                #     move.angular.z = -0
+                # else:
+                #     if(abs(s_error) > 220):
+                #         move.linear.x = 0.0
+                #         move.angular.z = 0.75 * np.sign(s_error)
+                #     elif(abs(s_error) > 120):
+                #         move.linear.x = 0.0
+                #         move.angular.z = 0.45 * np.sign(s_error)
+                #         last_error = np.sign(s_error)
+                #     else:
+                #         move.linear.x = 0.1
+                #         move.angular.z = -last_error * 0.04
+
+                # pub.publish(move) 
+
+                # if(abs(s_error) > 220):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.6 * np.sign(s_error)
+                # elif(abs(s_error) > 150):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.5 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # elif(abs(s_error) > 100):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.3 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # elif(abs(s_error) > 70):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.15 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # else:
+                    
 
                 if(abs(s_error) > 220):
                     move.linear.x = 0.0
                     move.angular.z = 0.6 * np.sign(s_error)
-                elif(abs(s_error) > 150):
-                    move.linear.x = 0.0
-                    move.angular.z = 0.5 * np.sign(s_error)
-                    last_error = np.sign(s_error)
                 elif(abs(s_error) > 100):
                     move.linear.x = 0.0
-                    move.angular.z = 0.3 * np.sign(s_error)
+                    move.angular.z = 0.45 * np.sign(s_error)
                     last_error = np.sign(s_error)
-                elif(abs(s_error) > 70):
+                elif(abs(s_error) > 80):
                     move.linear.x = 0.0
                     move.angular.z = 0.15 * np.sign(s_error)
                     last_error = np.sign(s_error)
+                # elif(abs(s_error) > 50):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.1 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
                 else:
-                    move.linear.x = 0.12
+                    move.linear.x = 0.15
                     move.angular.z = -last_error * 0.04
-                pub.publish(move) 
+                pub.publish(move)
 
-            
+                
             # General Right Follow Driving
 
             # This is the general driving state for the outer loop.
@@ -469,10 +537,14 @@ def imageCallback(data):
 
 if __name__ == '__main__':
     rospy.init_node('controller')
-
     image_topic = "R1/pi_camera/image_raw"
-    sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
 
+    sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
     pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
+
+    score_pub = rospy.Publisher('license_plate', String, queue_size=1)
+    rospy.sleep(2)
+    score_pub.publish("funMode,passwd,0,XR58")
+
     rospy.Rate(5)
     rospy.spin()
