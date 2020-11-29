@@ -288,10 +288,10 @@ def imageCallback(data):
         """
         if call_one:
             for i in range(1,5):
-                move.linear.x = 0.17
-                move.angular.z = 0.55
+                move.linear.x = 0.16
+                move.angular.z = 0.58
                 pub.publish(move)
-                rospy.sleep(0.7)
+                rospy.sleep(0.82)
             call_one = False
 
         """
@@ -344,13 +344,13 @@ def imageCallback(data):
                 pub.publish(move)
                 rospy.sleep(0.5)
 
-                move.linear.x = 0.18
+                move.linear.x = 0.25
                 move.angular.z = 0
                 
                 pub.publish(move)
                 rospy.sleep(1.3)
                 move.linear.x = 0.0
-                move.angular.z = 0.8
+                move.angular.z = 0.95
                 pub.publish(move)
                 rospy.sleep(2)
 
