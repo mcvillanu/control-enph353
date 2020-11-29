@@ -5,6 +5,7 @@ import numpy as np
 
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
+from std_msgs.msg import Bool
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -166,6 +167,10 @@ def all_same(array, new_val):
     else:
         return False
 
+def outerLapCallback(state):
+    global found_six_bool
+    found_six_bool = state
+
 # runs our main logic, is called everytime a new frame is passed
 def imageCallback(data):
     # states
@@ -286,7 +291,7 @@ def imageCallback(data):
                 move.linear.x = 0.17
                 move.angular.z = 0.55
                 pub.publish(move)
-                rospy.sleep(1)
+                rospy.sleep(0.7)
             call_one = False
 
         """
@@ -330,7 +335,7 @@ def imageCallback(data):
                 print("no_car", no_car_count)
                 no_car_count += 1
 
-            if no_car_count == 6:
+            if no_car_count == 10:
                 print("no car count", no_car_count)
                 move.linear.x = 0.0
                 move.angular.z = 0.8
@@ -538,9 +543,12 @@ def imageCallback(data):
 if __name__ == '__main__':
     rospy.init_node('controller')
     image_topic = "R1/pi_camera/image_raw"
+    outer_lap_topic = "/outer_lap_complete"
 
     sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
     pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
+
+    found_six_sub = rospy.Subscriber(outer_lap_topic, Bool, outerLapCallback)
 
     score_pub = rospy.Publisher('license_plate', String, queue_size=1)
     rospy.sleep(2)
