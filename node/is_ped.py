@@ -328,7 +328,7 @@ def imageCallback(data):
                 backsub_count_turn += 1
                 return
 
-            if is_car(no_noise_fgMask_turn[330:450,500:900]):
+            if is_car(no_noise_fgMask_turn[330:450,400:900]):
                 print("there is car", no_car_count)
                 no_car_count = 0
             else:
@@ -336,7 +336,9 @@ def imageCallback(data):
                 no_car_count += 1
 
             if no_car_count == 10:
-                print("no car count", no_car_count)
+                print("going")
+                # no_line_count=0
+                # return
                 move.linear.x = 0.0
                 move.angular.z = 0.8
                 pub.publish(move)
