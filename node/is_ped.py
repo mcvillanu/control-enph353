@@ -29,6 +29,8 @@ last_position = 920 # stores last position for right side following
 goal_position_L = 370 # goal position for left side following
 last_position_L = 370 # stores last position for left side following
 
+last_error_array = [0,0,0]
+
 last_error = -1 # direction of last error, for straight driving correction
 
 # image processing parameters 
@@ -120,8 +122,8 @@ def is_person(frame):
 
     for row1,row2 in rows_to_check:
         for r in range(row1, row2):
-            for col in range(360,1024):
-                if frame[r][col] == 255:
+            for col in range(200,1124):
+                if not frame[r][col] == 0:
                     return True
     return False
 
@@ -142,6 +144,22 @@ def is_sky(clip):
             if opening_sky[i][j] <= 250:
                 return False
     return True
+
+def shift_array(array, new_val):
+    global last_error_array
+    val1 = array[1]
+    val2 = array[2]
+    print("arr",array)
+    ret_array = [val1, val2, new_val]
+    last_error_array = ret_array[:]
+    return ret_array
+
+def all_same(array, new_val):
+    if array[0] == array[1] == array[2] == new_val:
+        print("alll same")
+        return True
+    else:
+        return False
 
 # runs our main logic, is called everytime a new frame is passed
 def imageCallback(data):
@@ -178,6 +196,7 @@ def imageCallback(data):
     global goal_position_L
     global last_position_L
     global last_error
+    global last_error_array
     
     try:
         # initial image processing for all necessary frames
@@ -188,7 +207,9 @@ def imageCallback(data):
         mask_crosswalk = cv2.inRange(rgb_image, lower_crosswalk , upper_crosswalk )
 
         # uncomment this section to display vehicle view and manually control the car
-        # cv2.imshow("ddd",rgb_image)
+        # fgMask = backSub.apply(rgb_image)
+        # no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
+        # cv2.imshow("ddd",no_noise_fgMask)
         # cv2.waitKey(1)
         # return
 
@@ -205,7 +226,7 @@ def imageCallback(data):
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
 
-            if no_per_count == 10:
+            if no_per_count == 5:
                 move.linear.x = 0.3
                 pub.publish(move)
                 time.sleep(1.8)
@@ -254,8 +275,8 @@ def imageCallback(data):
         """
         if call_one:
             for i in range(1,5):
-                move.linear.x = 0.15
-                move.angular.z = 0.58
+                move.linear.x = 0.17
+                move.angular.z = 0.55
                 pub.publish(move)
                 time.sleep(1)
             call_one = False
@@ -404,32 +425,20 @@ def imageCallback(data):
                 s_error = goal_position - return_position(opening)
                 print("right follow ", s_error)
 
-                # if(abs(s_error) > 220):
-                #     move.linear.x = 0.0
-                #     move.angular.z = 0.5
+                help = shift_array(last_error_array, s_error)
 
-                # elif(abs(s_error) > 120):
-                #     move.linear.x = 0.0
-                #     move.angular.z = 0.25 * np.sign(s_error)
-                #     last_error = np.sign(s_error)
-                # elif(abs(s_error) > 50):
-                #     move.linear.x = 0.0
-                #     move.angular.z = 0.15 * np.sign(s_error)
-                #     last_error = np.sign(s_error)
-                # elif(abs(s_error) > 20):
-                #     move.linear.x = 0.0
-                #     move.angular.z = 0.05 * np.sign(s_error)
-                #     last_error = np.sign(s_error)
-                # else:
-                #     move.linear.x = 0.15
-                #     move.angular.z = -last_error * 0.01
-                # pub.publish(move)    
+                print(help)
+                if all_same(last_error_array, s_error) and s_error < 0:
+                    print("fixing it")
+                    s_error = 221
+
                 if(abs(s_error) > 220):
                     move.linear.x = 0.0
                     move.angular.z = 0.4
+
                 elif(abs(s_error) > 50):
                     move.linear.x = 0.0
-                    move.angular.z = 0.19 * np.sign(s_error)
+                    move.angular.z = 0.15 * np.sign(s_error)
                     last_error = np.sign(s_error)
                 elif(abs(s_error) > 20):
                     move.linear.x = 0.0
@@ -437,7 +446,7 @@ def imageCallback(data):
                     last_error = np.sign(s_error)
                 else:
                     move.linear.x = 0.15
-                    move.angular.z = -last_error * 0.015
+                    move.angular.z = -last_error * 0.022
                 pub.publish(move)  
         
     except CvBridgeError, e:
