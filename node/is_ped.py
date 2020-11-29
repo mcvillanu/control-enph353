@@ -229,7 +229,7 @@ def imageCallback(data):
             if no_per_count == 5:
                 move.linear.x = 0.3
                 pub.publish(move)
-                time.sleep(1.8)
+                time.sleep(2)
 
                 move.linear.x = 0.0
                 move.angular.z = 0.0
@@ -432,13 +432,28 @@ def imageCallback(data):
                     print("fixing it")
                     s_error = 221
 
+                # if(abs(s_error) > 220):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.4
+
+                # elif(abs(s_error) > 50):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.15 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # elif(abs(s_error) > 20):
+                #     move.linear.x = 0.0
+                #     move.angular.z = 0.05 * np.sign(s_error)
+                #     last_error = np.sign(s_error)
+                # else:
+                #     move.linear.x = 0.15
+                #     move.angular.z = -last_error * 0.022
+                # pub.publish(move)  
                 if(abs(s_error) > 220):
                     move.linear.x = 0.0
-                    move.angular.z = 0.4
-
+                    move.angular.z = 0.75
                 elif(abs(s_error) > 50):
                     move.linear.x = 0.0
-                    move.angular.z = 0.15 * np.sign(s_error)
+                    move.angular.z = 0.2 * np.sign(s_error)
                     last_error = np.sign(s_error)
                 elif(abs(s_error) > 20):
                     move.linear.x = 0.0
@@ -446,7 +461,7 @@ def imageCallback(data):
                     last_error = np.sign(s_error)
                 else:
                     move.linear.x = 0.15
-                    move.angular.z = -last_error * 0.022
+                    move.angular.z = -last_error * 0.015
                 pub.publish(move)  
         
     except CvBridgeError, e:
@@ -459,10 +474,5 @@ if __name__ == '__main__':
     sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
 
     pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
-    score_pub = rospy.Publisher('license_plate', String, queue_size=1)
-
-    rospy.sleep(2)
-    score_pub.publish("funMode,passwd,0,XR58")
-
     rospy.Rate(5)
     rospy.spin()
