@@ -9,6 +9,8 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
 
+
+
 """
 Notes / TODO:
 size of the pictures is 720r x 1280c
@@ -58,8 +60,8 @@ backsub_count_turn = 0 # training the vehicle background subtractor for x iterat
 # states
 back_sub_bool = False # subtracting the background at a crosswalk
 back_sub_bool_turn = False # subtracting the background at the entrance to the middle
-found_six_bool = True # found the outer six plates, ready to go to the middle
-call_one = False # first iteration of the code, hard coded left turn
+found_six_bool = False # found the outer six plates, ready to go to the middle
+call_one = True # first iteration of the code, hard coded left turn
 in_middle = False # in the middle loop, using right following
 waiting_to_go = False # at the entrance to the middle, ready for background subtraction
 
@@ -128,7 +130,7 @@ def is_person(frame):
 
     for row1,row2 in rows_to_check:
         for r in range(row1, row2):
-            for col in range(200,1124):
+            for col in range(150,1154):
                 if not frame[r][col] == 0:
                     return True
     return False
@@ -162,7 +164,6 @@ def shift_array(array, new_val):
 
 def all_same(array, new_val):
     if array[0] == array[1] == array[2] == new_val:
-        print("alll same")
         return True
     else:
         return False
@@ -170,6 +171,19 @@ def all_same(array, new_val):
 def outerLapCallback(state):
     global found_six_bool
     found_six_bool = state
+
+def blueCallback(state):
+    return
+    # global move
+    # move.linear.x = 0
+    # move.angular.z = 0
+
+    # pub.publish(move)
+
+    # print("PAUSING FOR SIFT")
+
+    # rospy.sleep(5)
+
 
 # runs our main logic, is called everytime a new frame is passed
 def imageCallback(data):
@@ -217,13 +231,15 @@ def imageCallback(data):
         mask_crosswalk = cv2.inRange(rgb_image, lower_crosswalk , upper_crosswalk )
 
         # uncomment this section to display vehicle view and manually control the car
-        # is_car(no_noise_fgMask_turn[320:490,650:1050]) and is_car(no_noise_fgMask_turn[400:440,250:700])
-        # fgMask_turn = backSub_turn.apply(rgb_image)
-        # no_noise_fgMask_turn = cv2.morphologyEx(fgMask_turn, cv2.MORPH_OPEN, small_kernel)
+        # line_fol_mask = cv2.inRange(rgb_image, low_boundary_south_cars, high_boundary_south_cars) + cv2.inRange(rgb_image,low_boundary_north_cars,high_boundary_north_cars)
+        # opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
 
-        # cv2.imshow("ddd",no_noise_fgMask_turn[330:450,500:900])
-        # cv2.waitKey(1)
-        # print(is_car(no_noise_fgMask_turn[330:450,500:900]))
+        # shifted = opening_line_fol[:,125:]
+        # result = np.zeros((opening.shape[0],opening.shape[1]))
+        # result[:,0:shifted.shape[1]] = shifted
+        # cv2.imshow("ddd",opening + result)
+        # # cv2.waitKey(1)
+        # print(int((2.0/3)*1280))
         # return
 
         """
@@ -239,7 +255,7 @@ def imageCallback(data):
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
 
-            if no_per_count == 5:
+            if no_per_count == 6:
                 move.linear.x = 0.3
                 pub.publish(move)
                 rospy.sleep(2)
@@ -275,9 +291,11 @@ def imageCallback(data):
         if crosswalk_count > 0:
             if crosswalk_count == 10:
                 crosswalk_count = 0
+                return
             else:
                 crosswalk_count +=1
                 print("cw count", crosswalk_count)
+                return
 
         """
         Call One
@@ -287,11 +305,11 @@ def imageCallback(data):
         We then move into the right side follow driving state.
         """
         if call_one:
-            for i in range(1,5):
-                move.linear.x = 0.16
-                move.angular.z = 0.58
+            for i in range(0,5):
+                move.linear.x = 0.18
+                move.angular.z = 0.57
                 pub.publish(move)
-                rospy.sleep(0.82)
+                rospy.sleep(0.83)
             call_one = False
 
         """
@@ -344,7 +362,7 @@ def imageCallback(data):
                 pub.publish(move)
                 rospy.sleep(0.5)
 
-                move.linear.x = 0.25
+                move.linear.x = 0.2
                 move.angular.z = 0
                 
                 pub.publish(move)
@@ -502,7 +520,6 @@ def imageCallback(data):
 
                 help = shift_array(last_error_array, s_error)
 
-                print(help)
                 if all_same(last_error_array, s_error) and s_error < 0:
                     print("fixing it")
                     s_error = 221
@@ -546,15 +563,19 @@ if __name__ == '__main__':
     rospy.init_node('controller')
     image_topic = "R1/pi_camera/image_raw"
     outer_lap_topic = "/outer_lap_complete"
+    blue_topic = "/over_blue_thresh"
 
     sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
     pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
 
     found_six_sub = rospy.Subscriber(outer_lap_topic, Bool, outerLapCallback)
+    blue_sub = rospy.Subscriber(blue_topic,Bool,blueCallback)
 
     score_pub = rospy.Publisher('license_plate', String, queue_size=1)
     rospy.sleep(2)
     score_pub.publish("funMode,passwd,0,XR58")
+
+    
 
     rospy.Rate(5)
     rospy.spin()
