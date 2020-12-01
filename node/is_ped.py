@@ -56,6 +56,7 @@ no_per_count = 0 # waits for a pedestiran to be frozen for x frames
 no_car_count = 0 # waits for a vehicle to be frozen for x frames
 backsub_count = 0 # training the pedestrian background subtractor for x iterations
 backsub_count_turn = 0 # training the vehicle background subtractor for x iterations
+last_pause = -10
 
 # states
 back_sub_bool = False # subtracting the background at a crosswalk
@@ -64,6 +65,7 @@ found_six_bool = False # found the outer six plates, ready to go to the middle
 call_one = True # first iteration of the code, hard coded left turn
 in_middle = False # in the middle loop, using right following
 waiting_to_go = False # at the entrance to the middle, ready for background subtraction
+blue_wait = False
 
 # function to return position of white line to the left of the view
 def return_position_L(thresh):
@@ -172,7 +174,12 @@ def outerLapCallback(state):
     global found_six_bool
     found_six_bool = state
 
-
+def blueCallback(state):
+	global blue_wait
+	global last_pause
+	if rospy.get_rostime().secs - last_pause > 10:
+		blue_wait = True
+		last_pause = rospy.get_rostime().secs
 
 # runs our main logic, is called everytime a new frame is passed
 def imageCallback(data):
@@ -183,6 +190,7 @@ def imageCallback(data):
     global found_six_bool
     global back_sub_bool
     global back_sub_bool
+    global blue_wait
 
     # frame processing parameters
     global kernel
@@ -231,6 +239,14 @@ def imageCallback(data):
         # print(int((2.0/3)*1280))
         # return
 
+        if blue_wait:
+        	print("blue wait")
+        	move.linear.x = 0.0
+        	move.angular.z = 0.0
+        	pub.publish(move)
+        	rospy.sleep(2)
+        	blue_wait = False
+
         """
         Crosswalk Background Subtraction
 
@@ -244,7 +260,7 @@ def imageCallback(data):
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, small_kernel)
 
-            if no_per_count == 6:
+            if no_per_count == 5:
                 move.linear.x = 0.3
                 pub.publish(move)
                 rospy.sleep(2)
@@ -557,7 +573,7 @@ if __name__ == '__main__':
     pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
 
     found_six_sub = rospy.Subscriber(outer_lap_topic, Bool, outerLapCallback)
-    
+    blue_sub = rospy.Subscriber('blue_stop',Bool, blueCallback)
 
     score_pub = rospy.Publisher('license_plate', String, queue_size=1)
     rospy.sleep(2)
