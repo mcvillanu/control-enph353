@@ -172,17 +172,6 @@ def outerLapCallback(state):
     global found_six_bool
     found_six_bool = state
 
-def blueCallback(state):
-    return
-    # global move
-    # move.linear.x = 0
-    # move.angular.z = 0
-
-    # pub.publish(move)
-
-    # print("PAUSING FOR SIFT")
-
-    # rospy.sleep(5)
 
 
 # runs our main logic, is called everytime a new frame is passed
@@ -253,7 +242,7 @@ def imageCallback(data):
         """
         if back_sub_bool:
             fgMask = backSub.apply(rgb_image)
-            no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
+            no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, small_kernel)
 
             if no_per_count == 6:
                 move.linear.x = 0.3
@@ -425,7 +414,7 @@ def imageCallback(data):
                 move.angular.z = 0.25 * np.sign(s_error)
                 last_error = np.sign(s_error)
             else:
-                move.linear.x = 0.12
+                move.linear.x = 0.11
                 move.angular.z = -last_error * 0.04
             pub.publish(move)
         
@@ -563,13 +552,12 @@ if __name__ == '__main__':
     rospy.init_node('controller')
     image_topic = "R1/pi_camera/image_raw"
     outer_lap_topic = "/outer_lap_complete"
-    blue_topic = "/over_blue_thresh"
 
     sub_cam = rospy.Subscriber(image_topic, Image, imageCallback)
     pub = rospy.Publisher('R1/cmd_vel', Twist, queue_size=1)
 
     found_six_sub = rospy.Subscriber(outer_lap_topic, Bool, outerLapCallback)
-    blue_sub = rospy.Subscriber(blue_topic,Bool,blueCallback)
+    
 
     score_pub = rospy.Publisher('license_plate', String, queue_size=1)
     rospy.sleep(2)
