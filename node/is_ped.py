@@ -57,6 +57,7 @@ no_car_count = 0 # waits for a vehicle to be frozen for x frames
 backsub_count = 0 # training the pedestrian background subtractor for x iterations
 backsub_count_turn = 0 # training the vehicle background subtractor for x iterations
 last_pause = -10
+blue_wait_count = 0
 
 # states
 back_sub_bool = False # subtracting the background at a crosswalk
@@ -66,6 +67,7 @@ call_one = True # first iteration of the code, hard coded left turn
 in_middle = False # in the middle loop, using right following
 waiting_to_go = False # at the entrance to the middle, ready for background subtraction
 blue_wait = False
+first_cw = True
 
 # function to return position of white line to the left of the view
 def return_position_L(thresh):
@@ -177,7 +179,7 @@ def outerLapCallback(state):
 def blueCallback(state):
 	global blue_wait
 	global last_pause
-	if rospy.get_rostime().secs - last_pause > 10:
+	if rospy.get_rostime().secs - last_pause > 8:
 		blue_wait = True
 		last_pause = rospy.get_rostime().secs
 
@@ -218,6 +220,9 @@ def imageCallback(data):
     global last_position_L
     global last_error
     global last_error_array
+
+    global first_cw
+    global blue_wait_count
     
     try:
         # initial image processing for all necessary frames
@@ -241,10 +246,29 @@ def imageCallback(data):
 
         if blue_wait:
         	print("blue wait")
-        	move.linear.x = 0.0
-        	move.angular.z = 0.0
-        	pub.publish(move)
-        	rospy.sleep(2)
+        	blue_wait_count += 1
+
+        	
+        	
+        	if in_middle:
+        		move.linear.x = 0.0
+        		move.angular.z = -0.8
+        		pub.publish(move)
+        		rospy.sleep(0.1)
+        		move.linear.x = 0.0
+        		move.angular.z = 0.0
+        		pub.publish(move)
+        		rospy.sleep(2)
+        	else:
+        		move.linear.x = 0.0
+        		move.angular.z = 0.0
+        		pub.publish(move)
+
+        		if blue_wait_count == 3 or blue_wait_count == 4:
+        			rospy.sleep(4)
+        		else:
+        			rospy.sleep(3.5)
+
         	blue_wait = False
 
         """
@@ -259,8 +283,12 @@ def imageCallback(data):
         if back_sub_bool:
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, small_kernel)
+            limit = 4
 
-            if no_per_count == 5:
+            if first_cw:
+            	limit = 6
+
+            if no_per_count == limit:
                 move.linear.x = 0.3
                 pub.publish(move)
                 rospy.sleep(2)
@@ -273,6 +301,8 @@ def imageCallback(data):
                 back_sub_bool = False
                 backsub_count = 0
                 no_per_count = 0
+
+                first_cw = False
 
             if(backsub_count < 10):
                 backsub_count += 1
