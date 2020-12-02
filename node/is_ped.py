@@ -282,7 +282,7 @@ def imageCallback(data):
 
         		if blue_wait_count == 3 or blue_wait_count == 5 or blue_wait_count == 6:
         			print("AT P4")
-        			rospy.sleep(4)
+        			rospy.sleep(5)
         		else:
         			rospy.sleep(2)
 
