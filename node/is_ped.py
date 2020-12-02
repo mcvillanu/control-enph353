@@ -78,7 +78,7 @@ def return_position_L(thresh):
     hit_white_L = False
 
     for i in range(550,580): #550,580
-        for j in range(150, 600):
+        for j in range(100, 600):
             if(not hit_white_L and thresh[i][j] > 127):
                 hit_white_L = True
 
@@ -141,7 +141,6 @@ def is_person(frame):
 
 # checks if there is vehicle movement in the frame
 def is_car(frame):
-    print(frame.shape)
     for x in range(0, frame.shape[0]):
         for y in range(0,frame.shape[1]):
             if frame[x][y] != 0:
@@ -161,7 +160,6 @@ def shift_array(array, new_val):
     global last_error_array
     val1 = array[1]
     val2 = array[2]
-    print("arr",array)
     ret_array = [val1, val2, new_val]
     last_error_array = ret_array[:]
     return ret_array
