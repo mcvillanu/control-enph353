@@ -243,7 +243,7 @@ def imageCallback(data):
         # opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, small_kernel)
         # shift = opening_line_fol[:,0:1280-100]
         # result = np.zeros((opening.shape[0],opening.shape[1]))
-        # result[:,100:1280] = shift
+        # # result[:,100:1280] = shift
         # dst = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB)
 
         # cv2.imshow("ddd",dst)
@@ -477,10 +477,10 @@ def imageCallback(data):
 
             if(abs(s_error) > 220):
                 move.linear.x = 0.0
-                move.angular.z = 0.75 * np.sign(s_error)
+                move.angular.z = 0.5 * np.sign(s_error)
             elif(abs(s_error) > 100):
                 move.linear.x = 0.0
-                move.angular.z = 0.25 * np.sign(s_error)
+                move.angular.z = 0.2 * np.sign(s_error)
                 last_error = np.sign(s_error)
             else:
                 move.linear.x = 0.11
