@@ -177,7 +177,7 @@ def outerLapCallback(state):
 def blueCallback(state):
 	global blue_wait
 	global last_pause
-	if rospy.get_rostime().secs - last_pause > 12:
+	if rospy.get_rostime().secs - last_pause > 10:
 		blue_wait = True
 		last_pause = rospy.get_rostime().secs
 
@@ -264,12 +264,12 @@ def imageCallback(data):
         		move.linear.x = 0.0
         		move.angular.z = 0.0
         		pub.publish(move)
-        		rospy.sleep(4)
+        		rospy.sleep(3)
 
-        		move.linear.x = 0.0
-        		move.angular.z = 0.8
-        		pub.publish(move)
-        		rospy.sleep(0.4)
+        		# move.linear.x = 0.0
+        		# move.angular.z = 0.8
+        		# pub.publish(move)
+        		# rospy.sleep(0.4)
         		move.linear.x = 0.0
         		move.angular.z = 0.0
         		pub.publish(move)
@@ -280,7 +280,7 @@ def imageCallback(data):
 
         		if blue_wait_count == 3 or blue_wait_count == 5 or blue_wait_count == 6:
         			print("AT P4")
-        			rospy.sleep(5)
+        			rospy.sleep(4)
         		else:
         			rospy.sleep(2)
 
@@ -405,7 +405,7 @@ def imageCallback(data):
                 print("no_car", no_car_count)
                 no_car_count += 1
 
-            if no_car_count == 12:
+            if no_car_count == 13:
                 print("going")
                 # no_line_count=0
                 # return
