@@ -47,8 +47,8 @@ low_boundary_north_cars = np.array([85,85,185], dtype = "uint8") # lower boundar
 high_boundary_north_cars = np.array([115,115,215], dtype = "uint8") # upper boundary for parked cars on the north side
 low_boundary_south_cars = np.array([0,0,75], dtype = "uint8") # lower boundary for parked cars on the south side
 high_boundary_south_cars = np.array([15,15,120], dtype = "uint8") # upper boundary for parked cars on the south side
-low_boundary_ew_cars = np.array([10,10,110], dtype = "uint8")
-high_boundary_ew_cars = np.array([30,30,130], dtype = "uint8")
+low_boundary_ew_cars = np.array([5,5,105], dtype = "uint8")
+high_boundary_ew_cars = np.array([35,35,135], dtype = "uint8")
 
 # iteration variables
 crosswalk_count = 0 # discards frames after hardcoded movements
@@ -179,7 +179,7 @@ def outerLapCallback(state):
 def blueCallback(state):
 	global blue_wait
 	global last_pause
-	if rospy.get_rostime().secs - last_pause > 8:
+	if rospy.get_rostime().secs - last_pause > 12:
 		blue_wait = True
 		last_pause = rospy.get_rostime().secs
 
@@ -239,9 +239,15 @@ def imageCallback(data):
         # shifted = opening_line_fol[:,125:]
         # result = np.zeros((opening.shape[0],opening.shape[1]))
         # result[:,0:shifted.shape[1]] = shifted
-        # cv2.imshow("ddd",opening + result)
-        # # cv2.waitKey(1)
+        
         # print(int((2.0/3)*1280))
+        # line_fol_mask = cv2.inRange(rgb_image, low_boundary_ew_cars, high_boundary_ew_cars)
+        # opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, small_kernel)
+        # shift = opening_line_fol[:,0:1280-100]
+        # result = np.zeros((opening.shape[0],opening.shape[1]))
+        # result[:,100:1280] = shift
+        # cv2.imshow("ddd",opening+result)
+        # cv2.waitKey(1)
         # return
 
         if blue_wait:
@@ -254,20 +260,29 @@ def imageCallback(data):
         		move.linear.x = 0.0
         		move.angular.z = -0.8
         		pub.publish(move)
-        		rospy.sleep(0.1)
+        		rospy.sleep(0.5)
         		move.linear.x = 0.0
         		move.angular.z = 0.0
         		pub.publish(move)
-        		rospy.sleep(2)
+        		rospy.sleep(1.5)
+
+        		move.linear.x = 0.0
+        		move.angular.z = 0.8
+        		pub.publish(move)
+        		rospy.sleep(0.5)
+        		move.linear.x = 0.0
+        		move.angular.z = 0.0
+        		pub.publish(move)
         	else:
         		move.linear.x = 0.0
         		move.angular.z = 0.0
         		pub.publish(move)
 
-        		if blue_wait_count == 3 or blue_wait_count == 4:
-        			rospy.sleep(4)
+        		if blue_wait_count == 3 or blue_wait_count == 6:
+        			print("AT P4")
+        			rospy.sleep(5)
         		else:
-        			rospy.sleep(3.5)
+        			rospy.sleep(2)
 
         	blue_wait = False
 
@@ -283,13 +298,14 @@ def imageCallback(data):
         if back_sub_bool:
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, small_kernel)
-            limit = 4
+            limit = 3
 
             if first_cw:
             	limit = 6
 
             if no_per_count == limit:
-                move.linear.x = 0.3
+            	print("limit", limit)
+                move.linear.x = 0.27
                 pub.publish(move)
                 rospy.sleep(2)
 
@@ -375,6 +391,7 @@ def imageCallback(data):
         if waiting_to_go:
             fgMask_turn = backSub_turn.apply(rgb_image)
             no_noise_fgMask_turn = cv2.morphologyEx(fgMask_turn, cv2.MORPH_OPEN, small_kernel)
+            found_six_bool = False
 
             if(backsub_count_turn < 6):
                 print("train")
@@ -397,7 +414,7 @@ def imageCallback(data):
                 pub.publish(move)
                 rospy.sleep(0.5)
 
-                move.linear.x = 0.2
+                move.linear.x = 0.22
                 move.angular.z = 0
                 
                 pub.publish(move)
@@ -431,6 +448,9 @@ def imageCallback(data):
             print("looking for sky")
 
             if is_sky(thresh_sky):
+            	found_six_bool = False
+            	waiting_to_go = True
+
                 move.linear.x = 0.0
                 move.angular.z = 0.0
                 pub.publish(move)
@@ -443,14 +463,17 @@ def imageCallback(data):
                 move.angular.z = 0.0
                 pub.publish(move)
 
-                found_six_bool = False
-                waiting_to_go = True
                 return
 
-            line_fol_mask = cv2.inRange(rgb_image, low_boundary_ew_cars, high_boundary_ew_cars)
-            opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, kernel)
 
-            s_error = goal_position_L - return_position_L(opening + opening_line_fol)
+            line_fol_mask = cv2.inRange(rgb_image, low_boundary_ew_cars, high_boundary_ew_cars)
+            opening_line_fol = cv2.morphologyEx(line_fol_mask, cv2.MORPH_OPEN, small_kernel)
+            shift = opening_line_fol[:,0:1280-100]
+            result = np.zeros((opening.shape[0],opening.shape[1]))
+            result[:,100:1280] = shift
+
+
+            s_error = goal_position_L - return_position_L(opening + result)
 
             if(abs(s_error) > 220):
                 move.linear.x = 0.0
@@ -587,7 +610,7 @@ def imageCallback(data):
                     move.angular.z = 0.05 * np.sign(s_error)
                     last_error = np.sign(s_error)
                 else:
-                    move.linear.x = 0.15
+                    move.linear.x = 0.145
                     move.angular.z = -last_error * 0.015
                 pub.publish(move)  
         
