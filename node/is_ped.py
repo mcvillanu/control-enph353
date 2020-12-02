@@ -246,7 +246,9 @@ def imageCallback(data):
         # shift = opening_line_fol[:,0:1280-100]
         # result = np.zeros((opening.shape[0],opening.shape[1]))
         # result[:,100:1280] = shift
-        # cv2.imshow("ddd",opening+result)
+        # dst = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB)
+
+        # cv2.imshow("ddd",dst)
         # cv2.waitKey(1)
         # return
 
@@ -260,16 +262,16 @@ def imageCallback(data):
         		move.linear.x = 0.0
         		move.angular.z = -0.8
         		pub.publish(move)
-        		rospy.sleep(0.5)
+        		rospy.sleep(0.4)
         		move.linear.x = 0.0
         		move.angular.z = 0.0
         		pub.publish(move)
-        		rospy.sleep(1.5)
+        		rospy.sleep(4)
 
         		move.linear.x = 0.0
         		move.angular.z = 0.8
         		pub.publish(move)
-        		rospy.sleep(0.5)
+        		rospy.sleep(0.4)
         		move.linear.x = 0.0
         		move.angular.z = 0.0
         		pub.publish(move)
@@ -278,9 +280,9 @@ def imageCallback(data):
         		move.angular.z = 0.0
         		pub.publish(move)
 
-        		if blue_wait_count == 3 or blue_wait_count == 6:
+        		if blue_wait_count == 3 or blue_wait_count == 5 or blue_wait_count == 6:
         			print("AT P4")
-        			rospy.sleep(5)
+        			rospy.sleep(4)
         		else:
         			rospy.sleep(2)
 
@@ -405,7 +407,7 @@ def imageCallback(data):
                 print("no_car", no_car_count)
                 no_car_count += 1
 
-            if no_car_count == 10:
+            if no_car_count == 12:
                 print("going")
                 # no_line_count=0
                 # return
