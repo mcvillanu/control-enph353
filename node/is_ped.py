@@ -177,7 +177,7 @@ def outerLapCallback(state):
 def blueCallback(state):
 	global blue_wait
 	global last_pause
-	if rospy.get_rostime().secs - last_pause > 10:
+	if rospy.get_rostime().secs - last_pause > 8:
 		blue_wait = True
 		last_pause = rospy.get_rostime().secs
 
@@ -255,7 +255,6 @@ def imageCallback(data):
         	blue_wait_count += 1
 
         	
-        	
         	if in_middle:
         		move.linear.x = 0.0
         		move.angular.z = -0.8
@@ -298,7 +297,8 @@ def imageCallback(data):
         if back_sub_bool:
             fgMask = backSub.apply(rgb_image)
             no_noise_fgMask = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, small_kernel)
-            limit = 3
+            limit = 2
+            print(no_per_count)
 
             if first_cw:
             	limit = 6
@@ -414,13 +414,13 @@ def imageCallback(data):
                 pub.publish(move)
                 rospy.sleep(0.5)
 
-                move.linear.x = 0.22
+                move.linear.x = 0.23
                 move.angular.z = 0
                 
                 pub.publish(move)
-                rospy.sleep(1.3)
+                rospy.sleep(1)
                 move.linear.x = 0.0
-                move.angular.z = 0.95
+                move.angular.z = 0.9
                 pub.publish(move)
                 rospy.sleep(2)
 
@@ -445,7 +445,7 @@ def imageCallback(data):
         """
         if found_six_bool:
             ret_sky,thresh_sky = cv2.threshold(gray_frame[0:50,:],80,255, cv2.THRESH_BINARY)
-            print("looking for sky")
+            print("left follow")
 
             if is_sky(thresh_sky):
             	found_six_bool = False
@@ -508,7 +508,7 @@ def imageCallback(data):
                 result = np.zeros((opening.shape[0],opening.shape[1]))
                 result[:,0:shifted.shape[1]] = shifted
 
-                s_error = -20+goal_position - return_position(opening+result)
+                s_error = -15+goal_position - return_position(opening+result)
 
                 # position = return_position_mid(opening)
                 # s_error = 10+ goal_position - position
